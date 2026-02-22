@@ -1,0 +1,72 @@
+VID: 0x303A
+PID: 0x4001
+REPORT_SIZE: 5
+CONFIG_PATH: "config.yaml"
+
+buttons:
+  - id: 1
+    name: "Button 1"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-wifi"
+
+  - id: 2
+    name: "Button 2"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-bluetooth"
+
+  - id: 3
+    name: "Button 3"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-ethernet"
+
+  - id: 4
+    name: "Button 4"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-vpn"
+
+  - id: 5
+    name: "Button 5"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-proxy"
+
+  - id: 6
+    name: "Button 6"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-firewall"
+
+  - id: 7
+    name: "Button 7"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-network-settings"
+
+  - id: 8
+    name: "Button 8"
+    type: "cmd"
+    state: null
+    action: "omarchy-launch-network-tools"
+
+sliders:
+  - id: 1
+    name: "Slider 1"
+    type: "cmd"
+    value: 0
+    action: "omarchy-adjust-network-speed"
+
+  - id: 2
+    name: "Slider 2"
+    type: "cmd"
+    value: 0
+    action: "omarchy-adjust-network-priority"
+
+  - id: 3
+    name: "Slider 3"
+    type: "cmd"
+    value: 0
+    action: "omarchy-adjust-network-bandwidth"
