@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/Rokkit-exe/deckctl/device"
 	"github.com/Rokkit-exe/deckctl/models"
+	"github.com/tarm/serial"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func execCommand(action string) {
@@ -45,6 +47,8 @@ func LoadConfig(path string) (*models.Config, error) {
 }
 
 func main() {
+	connected := false
+	var port *serial.Port = nil
 	cfg, err := LoadConfig("config.yaml")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -58,12 +62,39 @@ func main() {
 	}
 	defer dev.Close()
 
+	for !connected {
+		port, err = device.OpenSerial("/dev/ttyACM0", 115200) // Adjust as neededà
+		if err != nil {
+			log.Fatalf("Failed to open serial port: %v", err)
+		}
+		time.Sleep(2 * time.Second) // Wait for device to be ready
+		connected = true
+	}
+	defer device.CloseSerial(port)
+
+	if port == nil {
+		log.Fatal("Serial port not available")
+	}
+	device.WriteSerial(port, []byte{0x01, 0x02}) // Example: send init command
 	fmt.Println("Listening for reports...")
 
 	var lastReport models.Report
 	buf := make([]byte, 65) // 64 bytes + report ID
 
 	for {
+		_, err = device.WriteSerial(port, []byte{0x10, 0x01, 0x02})
+		if err != nil {
+			log.Printf("Write error: %v", err)
+			connected = false
+			for !connected {
+				port, err = device.OpenSerial("/dev/ttyACM0", 115200) // Adjust as neededà
+				if err != nil {
+					log.Fatalf("Failed to open serial port: %v", err)
+				}
+				time.Sleep(1 * time.Second) // Wait for device to be ready
+				connected = true
+			}
+		}
 		n, err := dev.Read(buf)
 		if err != nil {
 			log.Printf("Read error: %v", err)
