@@ -2,133 +2,90 @@ package main
 
 import (
 	"fmt"
-	"github.com/Rokkit-exe/deckctl/device"
-	"github.com/Rokkit-exe/deckctl/models"
-	"github.com/tarm/serial"
-	"gopkg.in/yaml.v3"
 	"log"
-	"os"
-	"os/exec"
-	"strings"
 	"time"
+
+	"github.com/Rokkit-exe/deckctl/cdc"
+	"github.com/Rokkit-exe/deckctl/cmd"
+	"github.com/Rokkit-exe/deckctl/models"
+	"go.bug.st/serial"
 )
 
-func execCommand(action string) {
-	parts := strings.Fields(action)
-	if len(parts) == 0 {
-		return
-	}
-	cmd := exec.Command(parts[0], parts[1:]...)
-	if err := cmd.Start(); err != nil {
-		log.Printf("Command error: %v", err)
+func HandleButtonPress(report *models.Report, cfg *models.Config) {
+	for i, btn := range cfg.Buttons {
+		mask := uint8(1 << i)
+		isPressed := report.Buttons&mask != 0
+
+		if isPressed {
+			fmt.Printf("Button %d pressed → %s\n", btn.ID, btn.Action)
+			go cmd.Exec(btn.Action)
+		}
 	}
 }
 
-func parseReport(data []byte) models.Report {
-	// data[0] = report ID, data[1..4] = payload
-	return models.Report{
-		Buttons: data[1],
-		Slider1: data[2],
-		Slider2: data[3],
-		Slider3: data[4],
-	}
-}
+func HandleSliderChange(report *models.Report, lastReport *models.Report, cfg *models.Config) {
+	sliderValues := [3]uint8{report.Slider1, report.Slider2, report.Slider3}
+	lastValues := [3]uint8{lastReport.Slider1, lastReport.Slider2, lastReport.Slider3}
 
-func LoadConfig(path string) (*models.Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+	for i, sld := range cfg.Sliders {
+		if sliderValues[i] != lastValues[i] {
+			fmt.Printf("Slider %d changed to %d → %s\n", sld.ID, sliderValues[i], sld.Action)
+			go cmd.Exec(fmt.Sprintf("%s %d", sld.Action, sliderValues[i]))
+		}
 	}
-	var cfg models.Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
 }
 
 func main() {
-	connected := false
 	var port *serial.Port = nil
-	cfg, err := LoadConfig("config.yaml")
+	cfg, err := models.LoadConfig("config.yaml")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	device.EnumerateDevices()
-
-	dev, err := device.OpenDevice(cfg.VID, cfg.PID)
+	port, err = cdc.Open("/dev/ttyACM1", 115200)
 	if err != nil {
-		log.Fatalf("Failed to open device: %v", err)
+		log.Fatalf("Failed to open serial port: %v", err)
 	}
-	defer dev.Close()
-
-	for !connected {
-		port, err = device.OpenSerial("/dev/ttyACM0", 115200) // Adjust as neededà
-		if err != nil {
-			log.Fatalf("Failed to open serial port: %v", err)
-		}
-		time.Sleep(2 * time.Second) // Wait for device to be ready
-		connected = true
-	}
-	defer device.CloseSerial(port)
+	time.Sleep(2 * time.Second) // Wait for device to be ready
+	defer cdc.Close(*port)
 
 	if port == nil {
 		log.Fatal("Serial port not available")
 	}
-	device.WriteSerial(port, []byte{0x01, 0x02}) // Example: send init command
+
+	data := cfg.FormatData()
+	_, err = cdc.Write(*port, data)
+	if err != nil {
+		log.Fatalf("Failed to write to serial port: %v", err)
+	}
 	fmt.Println("Listening for reports...")
 
 	var lastReport models.Report
-	buf := make([]byte, 65) // 64 bytes + report ID
 
 	for {
-		_, err = device.WriteSerial(port, []byte{0x10, 0x01, 0x02})
+		packet, err := cdc.Read(*port)
 		if err != nil {
-			log.Printf("Write error: %v", err)
-			connected = false
-			for !connected {
-				port, err = device.OpenSerial("/dev/ttyACM0", 115200) // Adjust as neededà
-				if err != nil {
-					log.Fatalf("Failed to open serial port: %v", err)
-				}
-				time.Sleep(1 * time.Second) // Wait for device to be ready
-				connected = true
-			}
-		}
-		n, err := dev.Read(buf)
-		if err != nil {
-			log.Printf("Read error: %v", err)
-			break
-		}
-		if n < 5 {
+			log.Printf("Failed to parse report: %v", err)
 			continue
 		}
 
-		report := parseReport(buf)
-
-		// Handle button presses
-		for i, btn := range cfg.Buttons {
-			mask := uint8(1 << i)
-			wasPressed := lastReport.Buttons&mask != 0
-			isPressed := report.Buttons&mask != 0
-
-			if isPressed && !wasPressed {
-				fmt.Printf("Button %d pressed → %s\n", btn.ID, btn.Action)
-				go execCommand(btn.Action)
+		switch packet.ID {
+		case models.ACK:
+			fmt.Println("ESP32 ACK received")
+			continue
+		case models.Input:
+			report, err := models.ParseReport(*packet)
+			if err != nil {
+				log.Printf("Failed to parse input report: %v", err)
+				continue
 			}
+			fmt.Printf("Input report: %+v\n", report)
+			HandleButtonPress(report, cfg)
+			HandleSliderChange(report, &lastReport, cfg)
+			lastReport = *report
+		default:
+			log.Printf("Unknown packet ID: %02x", packet.ID)
+			continue
 		}
-
-		// Handle slider changes
-		sliderValues := [3]uint8{report.Slider1, report.Slider2, report.Slider3}
-		lastValues := [3]uint8{lastReport.Slider1, lastReport.Slider2, lastReport.Slider3}
-
-		for i, sld := range cfg.Sliders {
-			if sliderValues[i] != lastValues[i] {
-				fmt.Printf("Slider %d changed to %d → %s\n", sld.ID, sliderValues[i], sld.Action)
-				go execCommand(fmt.Sprintf("%s %d", sld.Action, sliderValues[i]))
-			}
-		}
-
-		lastReport = report
 	}
 }

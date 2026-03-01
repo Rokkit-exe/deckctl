@@ -7,66 +7,77 @@ buttons:
   - id: 1
     name: "Button 1"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-wifi"
+    action: "notify-send 'btn1'"
 
   - id: 2
     name: "Button 2"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-bluetooth"
+    action: "notify-send 'btn2'"
 
   - id: 3
     name: "Button 3"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-ethernet"
+    action: "notify-send 'btn3'"
 
   - id: 4
     name: "Button 4"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-vpn"
+    action: "notify-send 'btn4'"
 
   - id: 5
     name: "Button 5"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-proxy"
+    action: "notify-send 'btn5'"
 
   - id: 6
     name: "Button 6"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-firewall"
+    action: "notify-send 'btn6'"
 
   - id: 7
     name: "Button 7"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-network-settings"
+    action: "notify-send 'btn7'"
 
   - id: 8
     name: "Button 8"
     type: "cmd"
+    color: "#FF0000"
     state: null
-    action: "omarchy-launch-network-tools"
+    action: "notify-send 'btn8'"
 
 sliders:
   - id: 1
     name: "Slider 1"
     type: "cmd"
+    color: "#FF0000"
     value: 0
-    action: "omarchy-adjust-network-speed"
+    action: "notify-send 'sld1='"
 
   - id: 2
     name: "Slider 2"
     type: "cmd"
+    color: "#00FF00"
     value: 0
-    action: "omarchy-adjust-network-priority"
+    action: "notify-send 'sld2='"
 
   - id: 3
     name: "Slider 3"
     type: "cmd"
+    color: "#0000FF"
     value: 0
-    action: "omarchy-adjust-network-bandwidth"
+    action: "notify-send 'sld3='"
