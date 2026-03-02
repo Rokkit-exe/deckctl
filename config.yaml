@@ -1,7 +1,7 @@
 VID: 0x303A
 PID: 0x4001
-REPORT_SIZE: 5
-CONFIG_PATH: "config.yaml"
+BaudRate: 115200
+Port: "/dev/ttyACM1"
 
 buttons:
   - id: 1
