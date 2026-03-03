@@ -1,25 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"github.com/Rokkit-exe/deckctl/config"
-	"github.com/Rokkit-exe/deckctl/ctl"
-	"github.com/Rokkit-exe/deckctl/serial"
-	"log"
+	"os"
+
+	"github.com/Rokkit-exe/deckctl/cmd"
 )
 
 func main() {
-	cfg, err := config.LoadConfig("config.yaml")
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+	var App = cmd.CLI{
+		Commands: []cmd.Command{
+			cmd.DaemonCommand,
+			cmd.FlashCommand,
+		},
 	}
-
-	manager := serial.NewManager(cfg)
-	ctl := ctl.NewController(manager)
-
-	ctl.SendConfig()
-	fmt.Println("Connecting to serial port...")
-	go manager.Run()
-	fmt.Println("Connected. Listening for input...")
-	ctl.Handle()
+	App.Execute(os.Args)
 }

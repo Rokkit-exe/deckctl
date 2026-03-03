@@ -2,10 +2,10 @@ package ctl
 
 import (
 	"fmt"
-	"github.com/Rokkit-exe/deckctl/cmd"
 	"github.com/Rokkit-exe/deckctl/config"
-	"github.com/Rokkit-exe/deckctl/protocol"
-	"github.com/Rokkit-exe/deckctl/serial"
+	"github.com/Rokkit-exe/deckctl/internal/cmd"
+	"github.com/Rokkit-exe/deckctl/internal/protocol"
+	"github.com/Rokkit-exe/deckctl/internal/serial"
 )
 
 type Controller struct {
@@ -13,11 +13,30 @@ type Controller struct {
 	LastReport protocol.Report
 }
 
-func NewController(manager *serial.Manager) *Controller {
+func NewController(cfg *config.Config) *Controller {
 	return &Controller{
-		Manager:    manager,
+		Manager:    serial.NewManager(cfg),
 		LastReport: protocol.Report{Buttons: 0, Slider1: 0, Slider2: 0, Slider3: 0},
 	}
+}
+
+func (c *Controller) Start() error {
+	go c.Manager.Run()
+	fmt.Println("Serial manager started.")
+	go c.Handle()
+	fmt.Println("Controller handler started.")
+	return nil
+}
+
+func (c *Controller) Stop() {
+	c.Manager.Stop()
+	fmt.Println("Serial manager stopped.")
+}
+
+func (c *Controller) Restart() {
+	c.Manager.Stop()
+	c.Manager.Run()
+	fmt.Println("Serial manager restarted.")
 }
 
 func (c *Controller) Handle() {
@@ -36,7 +55,6 @@ func (c *Controller) Handle() {
 				fmt.Printf("Failed to decode report: %v\n", err)
 				continue
 			}
-			fmt.Printf("Input report: %+v\n", report)
 			HandleButtonPress(report, c.Manager.Cfg)
 			HandleSliderChange(report, &c.LastReport, c.Manager.Cfg)
 			c.LastReport = *report
@@ -51,7 +69,13 @@ func (c *Controller) SendAck() {
 	c.Manager.TxChan <- ack
 }
 
-func (c *Controller) SendConfig() {
+func (c *Controller) Flash(file string) {
+	cfg, err := config.LoadConfig(file)
+	if err != nil {
+		fmt.Printf("Failed to load config: %v\n", err)
+		return
+	}
+	c.Manager.Cfg = cfg
 	data := protocol.Encode(c.Manager.Cfg)
 	c.Manager.TxChan <- data
 }

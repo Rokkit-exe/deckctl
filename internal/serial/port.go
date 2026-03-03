@@ -3,11 +3,10 @@ package serial
 import (
 	"fmt"
 
-	"github.com/Rokkit-exe/deckctl/protocol"
+	"github.com/Rokkit-exe/deckctl/internal/protocol"
 	"go.bug.st/serial"
 )
 
-// var ACKPacket = []byte{0x10, 0x01, 0x00, 0x00}
 var maxPacketSize = 64
 var packetHeaderLen = 4
 var maxAllowedPayload = 212
@@ -23,6 +22,7 @@ func Close(p serial.Port) error {
 	if p == nil {
 		return nil
 	}
+	fmt.Println("Closing port")
 	return p.Close()
 }
 
@@ -31,7 +31,6 @@ func Write(p serial.Port, data []byte) (int, error) {
 	if err != nil {
 		return n, err
 	}
-	fmt.Printf("Wrote %d bytes: %x\n", n, data[:n])
 	return n, nil
 }
 

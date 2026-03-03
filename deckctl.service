@@ -1,0 +1,17 @@
+[Unit]
+Description=DeckCTL Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/deckctl daemon run
+Restart=on-failure
+RestartSec=5s
+User=frank
+Group=frank
+WorkingDirectory=/home/frank
+Environment=DISPLAY=:0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+
+[Install]
+WantedBy=multi-user.target
