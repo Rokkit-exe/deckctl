@@ -1,36 +1,55 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-if ! command -v systemctl &> /dev/null; then
-    echo "systemctl could not be found, please install systemd to use deckctl as a service."
-    exit
-fi
+echo "Installing deckctl..."
 
-if [ ! -f "./deckctl.service" ]; then
-    echo "deckctl.service file not found in the current directory. Please ensure it is present."
-    exit
-fi
+# Validate requirements
+command -v systemctl >/dev/null || { echo "systemd required"; exit 1; }
+command -v go >/dev/null || { echo "Go required"; exit 1; }
 
-if [ ! -f "./config.yaml" ]; then
-    echo "config.yaml file not found in the current directory. Please ensure it is present."
-    exit
-fi
+for file in deckctl.service config.yaml 50-deckctl.rules; do
+    [[ -f "$file" ]] || { echo "$file missing"; exit 1; }
+done
 
-sudo systemctl stop deckctl.service
+echo "Requesting sudo..."
+sudo -v
 
+echo "Stopping old service..."
+sudo systemctl stop deckctl.service 2>/dev/null || true
+sudo systemctl disable deckctl.service 2>/dev/null || true
+
+echo "Building binary..."
+go mod tidy
 go build -o deckctl main.go
 
-sudo cp ./deckctl.service /etc/systemd/system/deckctl.service
+echo "Installing binary..."
+sudo install -m 755 ./deckctl /usr/local/bin/deckctl
 
-sudo cp ./deckctl /usr/local/bin/deckctl
+echo "Installing service..."
+sudo install -m 644 ./deckctl.service /etc/systemd/system/deckctl.service
 
-mkdir -p "$HOME/.config/deckctl"
-cp ./config.yaml "$HOME/.config/deckctl/config.yaml"
+sudo sed -i "s/^User=.*/User=$USER/" /etc/systemd/system/deckctl.service
+sudo sed -i "s/^Group=.*/Group=$USER/" /etc/systemd/system/deckctl.service
+sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$HOME|" /etc/systemd/system/deckctl.service
 
-if [ -f "/etc/systemd/system/deckctl.service" ]; then
-    sudo systemctl daemon-reload
-    sudo systemctl enable deckctl.service
-    sudo systemctl start deckctl.service
-else
-    echo "Failed to install deckctl service."
+echo "Installing udev rules..."
+sudo install -m 644 ./50-deckctl.rules /etc/udev/rules.d/
+
+if getent group uucp >/dev/null; then
+    sudo usermod -aG uucp "$USER"
+    echo "You must log out and back in for group changes to apply."
 fi
 
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+echo "Installing config..."
+install -d "$HOME/.config/deckctl/scripts"
+install -m 644 ./config.yaml "$HOME/.config/deckctl/config.yaml"
+
+echo "Enabling service..."
+sudo systemctl daemon-reload
+sudo systemctl enable deckctl.service
+sudo systemctl start deckctl.service
+
+echo "Installation complete."

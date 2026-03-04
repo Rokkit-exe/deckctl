@@ -1,0 +1,9 @@
+# /etc/udev/rules.d/50-deckctl.rules
+SUBSYSTEM=="tty", \
+  ATTRS{idVendor}=="303a", \
+  ATTRS{idProduct}=="4001", \
+  GROUP="uucp", \
+  MODE="0660", \
+  SYMLINK+="deckctl"
+
+
