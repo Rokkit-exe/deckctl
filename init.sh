@@ -35,11 +35,6 @@ sudo sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$HOME|" /etc/systemd/system
 echo "Installing udev rules..."
 sudo install -m 644 ./50-deckctl.rules /etc/udev/rules.d/
 
-if getent group uucp >/dev/null; then
-    sudo usermod -aG uucp "$USER"
-    echo "You must log out and back in for group changes to apply."
-fi
-
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 

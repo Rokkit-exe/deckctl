@@ -1,7 +1,7 @@
 VID: 0x303A
 PID: 0x4001
 BaudRate: 115200
-Port: "/dev/serial/by-id/usb-Freenove_ESP32-S3_ESP32_Stream_Deck_1234567890AB-if00"
+Port: "/dev/deckctl"
 
 buttons:
   - id: 1
